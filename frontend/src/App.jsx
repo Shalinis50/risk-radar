@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./App.css";
+import riskRadarLogo from "./assets/riskradar-logo.png";
 
 const initialTransactions = [
   {
@@ -38,6 +39,10 @@ function App() {
     );
   }
 
+  function refreshDashboard() {
+    setTransactions(initialTransactions);
+  }
+
   const flaggedCount = transactions.filter(
     (transaction) => transaction.status === "FLAGGED"
   ).length;
@@ -46,116 +51,219 @@ function App() {
     (transaction) => transaction.risk === "HIGH"
   ).length;
 
-  return (
-    <div className="dashboard">
-      <header className="header">
-        <div>
-          <h1>Fraud Detection Console</h1>
-          <p>Transaction Risk Review Dashboard</p>
-        </div>
+  const reviewedCount = transactions.filter(
+    (transaction) =>
+      transaction.status === "REVIEWED" ||
+      transaction.status === "CLEARED"
+  ).length;
 
-        <button className="refresh-button">
-          Refresh
-        </button>
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+  <img
+    src={riskRadarLogo}
+    alt="RiskRadar logo"
+    className="brand-logo"
+  />
+
+  <div className="brand-text">
+    <h2>RiskRadar</h2>
+    <span>Fraud Intelligence Console</span>
+  </div>
+</div>
+
+        <div className="system-status">
+          <span className="status-dot"></span>
+          System Online
+        </div>
       </header>
 
-      <section className="summary">
-        <div className="summary-card">
-          <span>Flagged Transactions</span>
-          <strong>{transactions.length}</strong>
-        </div>
+      <main className="dashboard">
+        <section className="page-heading">
+          <div>
+            <span className="eyebrow">RISK OPERATIONS</span>
+            <h1>Transaction Review</h1>
+            <p>
+              Monitor suspicious transactions and review
+              potential fraud activity.
+            </p>
+          </div>
 
-        <div className="summary-card">
-          <span>High Risk</span>
-          <strong>{highRiskCount}</strong>
-        </div>
+          <button
+            className="refresh-button"
+            onClick={refreshDashboard}
+          >
+            ↻ Refresh
+          </button>
+        </section>
 
-        <div className="summary-card">
-          <span>Pending Review</span>
-          <strong>{flaggedCount}</strong>
-        </div>
-      </section>
+        <section className="summary">
+          <div className="summary-card">
+            <div className="card-icon blue">!</div>
+            <div>
+              <span>Flagged Transactions</span>
+              <strong>{flaggedCount}</strong>
+            </div>
+          </div>
 
-      <section className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>User</th>
-              <th>Amount</th>
-              <th>Location</th>
-              <th>Risk</th>
-              <th>Rules Triggered</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
+          <div className="summary-card">
+            <div className="card-icon red">⚠</div>
+            <div>
+              <span>High Risk</span>
+              <strong>{highRiskCount}</strong>
+            </div>
+          </div>
 
-          <tbody>
-            {transactions.map((transaction) => (
-              <tr key={transaction.id}>
-                <td>#{transaction.id}</td>
+          <div className="summary-card">
+            <div className="card-icon green">✓</div>
+            <div>
+              <span>Reviewed</span>
+              <strong>{reviewedCount}</strong>
+            </div>
+          </div>
+        </section>
 
-                <td>{transaction.user}</td>
+        <section className="table-section">
+          <div className="section-header">
+            <div>
+              <h2>Flagged Transactions</h2>
+              <p>Transactions requiring analyst attention</p>
+            </div>
 
-                <td>
-                  ₹{transaction.amount.toLocaleString("en-IN")}
-                </td>
+            <span className="live-badge">
+              ● LIVE
+            </span>
+          </div>
 
-                <td>{transaction.location}</td>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Transaction</th>
+                  <th>User</th>
+                  <th>Amount</th>
+                  <th>Location</th>
+                  <th>Risk Level</th>
+                  <th>Triggered Rules</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
 
-                <td>
-                  <span
-                    className={`risk-badge ${transaction.risk.toLowerCase()}`}
-                  >
-                    {transaction.risk}
-                  </span>
+              <tbody>
+                {transactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td>
+                      <span className="transaction-id">
+                        TXN-{String(transaction.id).padStart(4, "0")}
+                      </span>
+                    </td>
 
-                  <div className="score">
-                    {transaction.score}/100
-                  </div>
-                </td>
+                    <td>
+                      <span className="user-id">
+                        {transaction.user}
+                      </span>
+                    </td>
 
-                <td>
-                  {transaction.rules.map((rule) => (
-                    <span className="rule-tag" key={rule}>
-                      {rule}
-                    </span>
-                  ))}
-                </td>
+                    <td>
+                      <strong className="amount">
+                        ₹{transaction.amount.toLocaleString("en-IN")}
+                      </strong>
+                    </td>
 
-                <td>{transaction.status}</td>
+                    <td>
+                      <span className="location">
+                        ● {transaction.location}
+                      </span>
+                    </td>
 
-                <td>
-                  <button
-                    className="review-button"
-                    onClick={() =>
-                      updateStatus(
-                        transaction.id,
-                        "REVIEWED"
-                      )
-                    }
-                  >
-                    Reviewed
-                  </button>
+                    <td>
+                      <div className="risk-cell">
+                        <span
+                          className={`risk-badge ${transaction.risk.toLowerCase()}`}
+                        >
+                          {transaction.risk}
+                        </span>
 
-                  <button
-                    className="clear-button"
-                    onClick={() =>
-                      updateStatus(
-                        transaction.id,
-                        "CLEARED"
-                      )
-                    }
-                  >
-                    Clear
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+                        <div className="risk-score">
+                          <div className="score-bar">
+                            <div
+                              className={`score-fill ${transaction.risk.toLowerCase()}`}
+                              style={{
+                                width: `${transaction.score}%`,
+                              }}
+                            ></div>
+                          </div>
+
+                          <span>
+                            {transaction.score}/100
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div className="rules">
+                        {transaction.rules.map((rule) => (
+                          <span
+                            className="rule-tag"
+                            key={rule}
+                          >
+                            {rule}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+
+                    <td>
+                      <span
+                        className={`status-badge ${transaction.status.toLowerCase()}`}
+                      >
+                        {transaction.status}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div className="actions">
+                        <button
+                          className="review-button"
+                          onClick={() =>
+                            updateStatus(
+                              transaction.id,
+                              "REVIEWED"
+                            )
+                          }
+                        >
+                          ✓ Review
+                        </button>
+
+                        <button
+                          className="clear-button"
+                          onClick={() =>
+                            updateStatus(
+                              transaction.id,
+                              "CLEARED"
+                            )
+                          }
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <footer className="footer">
+          RiskRadar Fraud Detection System
+          <span>•</span>
+          Analyst Review Console
+        </footer>
+      </main>
     </div>
   );
 }
