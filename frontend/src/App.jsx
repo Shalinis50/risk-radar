@@ -1,46 +1,81 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
-import riskRadarLogo from "./assets/riskradar-logo.png";
 
-const initialTransactions = [
-  {
-    id: 1,
-    user: "USER001",
-    amount: 95000,
-    location: "Chennai",
-    risk: "HIGH",
-    score: 90,
-    rules: ["unusual amount", "transaction velocity"],
-    status: "FLAGGED",
-  },
-  {
-    id: 2,
-    user: "USER002",
-    amount: 2500,
-    location: "Bangalore",
-    risk: "MEDIUM",
-    score: 40,
-    rules: ["transaction velocity"],
-    status: "FLAGGED",
-  },
-];
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 function App() {
-  const [transactions, setTransactions] =
-    useState(initialTransactions);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  function updateStatus(id, status) {
-    setTransactions((currentTransactions) =>
-      currentTransactions.map((transaction) =>
-        transaction.id === id
-          ? { ...transaction, status }
-          : transaction
-      )
-    );
+  async function fetchTransactions() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/flagged`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transactions");
+      }
+
+      const data = await response.json();
+
+      const formattedTransactions = data.map((transaction) => ({
+        id: transaction.id,
+        user: transaction.user_id,
+        amount: transaction.amount,
+        location: `${transaction.latitude}, ${transaction.longitude}`,
+        risk: transaction.risk_level,
+        score: transaction.risk_score,
+        rules: transaction.triggered_rules
+          ? transaction.triggered_rules.split(",").filter(Boolean)
+          : [],
+        status:
+          transaction.review_status === "PENDING"
+            ? "FLAGGED"
+            : transaction.review_status,
+      }));
+
+      setTransactions(formattedTransactions);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to connect to Risk Radar API.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function refreshDashboard() {
-    setTransactions(initialTransactions);
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  async function updateStatus(id, status) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/transactions/${id}/review`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            review_status: status,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update transaction");
+      }
+
+      await fetchTransactions();
+    } catch (err) {
+      console.error(err);
+      setError("Unable to update transaction.");
+    }
   }
 
   const flaggedCount = transactions.filter(
@@ -61,17 +96,12 @@ function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-  <img
-    src={riskRadarLogo}
-    alt="RiskRadar logo"
-    className="brand-logo"
-  />
-
-  <div className="brand-text">
-    <h2>RiskRadar</h2>
-    <span>Fraud Intelligence Console</span>
-  </div>
-</div>
+          <div className="brand-icon">R</div>
+          <div>
+            <h2>RiskRadar</h2>
+            <span>Fraud Intelligence Console</span>
+          </div>
+        </div>
 
         <div className="system-status">
           <span className="status-dot"></span>
@@ -92,11 +122,19 @@ function App() {
 
           <button
             className="refresh-button"
-            onClick={refreshDashboard}
+            onClick={fetchTransactions}
           >
             ↻ Refresh
           </button>
         </section>
+
+        {loading && (
+          <p>Loading transactions...</p>
+        )}
+
+        {error && (
+          <p className="error-message">{error}</p>
+        )}
 
         <section className="summary">
           <div className="summary-card">
@@ -156,7 +194,8 @@ function App() {
                   <tr key={transaction.id}>
                     <td>
                       <span className="transaction-id">
-                        TXN-{String(transaction.id).padStart(4, "0")}
+                        TXN-
+                        {String(transaction.id).padStart(4, "0")}
                       </span>
                     </td>
 
@@ -168,7 +207,10 @@ function App() {
 
                     <td>
                       <strong className="amount">
-                        ₹{transaction.amount.toLocaleString("en-IN")}
+                        ₹
+                        {transaction.amount.toLocaleString(
+                          "en-IN"
+                        )}
                       </strong>
                     </td>
 
